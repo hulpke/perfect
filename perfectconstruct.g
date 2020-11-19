@@ -5,6 +5,8 @@
 # MakePerfectGroupOrders(seedorders) extends list of orders by 2, by adding
 # simple groups and products with prime powers, excluding coprime primes
 
+Read("tabletrans.g");
+
 # Orders that were not covered in Holt/Plesken lists
 #PERFUNKNOWN:=Filtered(SizesPerfectGroups(),x->NrPerfectLibraryGroups(x)=0);
 PERFUNKNOWN:=[61440, 86016, 122880, 172032, 245760, 344064, 368640, 491520,
@@ -12,7 +14,7 @@ PERFUNKNOWN:=[61440, 86016, 122880, 172032, 245760, 344064, 368640, 491520,
 
 #Limit for TransformingPermutationsCharacterTables (class number) in
 #identifying factor groups
-TPCTLIMIT:=240;
+TPCTLIMIT:=600;
 
 # seed is list of orders
 MakePerfectGroupOrders:=function(seed)
@@ -188,10 +190,14 @@ local props,pool,test,c,f,r,tablecache,tmp;
 	      if not IsBound(tablecache[i]) then
 		tmp:=Group(r.groupinfo[i][2]);
 		SetSize(tmp,r.groupinfo[i][1]);
-		tablecache[i]:=CharacterTable(tmp);
+		tmp:=ShallowCopy(CharacterTable(tmp));
+                Unbind(tmp!.ConjugacyClasses); # avoid caching groups
+                Unbind(tmp!.UnderlyingGroup);
+		tablecache[i]:=tmp;
 	      fi;
-	      if TransformingPermutationsCharacterTables(CharacterTable(g),
-		    tablecache[i])=fail then
+	      if TransformingPermutationsCharacterTablesTimeout(
+                 CharacterTable(g),tablecache[i],
+                 QuoInt(Size(g),5000))=fail then
 		RemoveSet(a,i);
 	      fi;
 	    fi;
@@ -246,10 +252,11 @@ local c,d,f;
   for f in FINGERPRINTPROPERTIES do
     if f(g)<>f(h) then return false;fi;
   od;
-  if Length(ConjugacyClasses(g))<80 then
+  if Length(ConjugacyClasses(g))<500 then
     c:=CharacterTable(g);;Irr(c);
     d:=CharacterTable(h);;Irr(d);
-    if TransformingPermutationsCharacterTables(c,d)=fail then return false; fi;
+    if TransformingPermutationsCharacterTablesTimeout(c,d,
+      QuoInt(Size(g),5000))=fail then return false; fi;
   fi;
 
   c:=Size(g);
@@ -338,7 +345,7 @@ local respp,cf,m,mpos,coh,fgens,comp,reps,v,new,isok,pema,pf,gens,nt,quot,
           nt:=Filtered(nt,x->Size(x)=nts);
 
           # leave out the one how it was created
-          quot:=GroupHomomorphismByImages(pf,coh.group,
+          quot:=GroupHomomorphismByImagesNC(pf,coh.group,
             List(GeneratorsOfGroup(new),x->ImagesRepresentative(pema,x)),
               Concatenation(
               List(GeneratorsOfGroup(Range(coh.fphom)),
@@ -528,7 +535,7 @@ local i,j,a,p,s,w,idx,sz,g,sim,sg,newf,newrels,new,per,o,rk,smallgenfp,gs;
       per:=per*SmallerDegreePermutationRepresentation(Image(per));
     until p=NrMovedPoints(Range(per));
     p:=Image(per);
-    per:=GroupHomomorphismByImages(new,p,GeneratorsOfGroup(new),
+    per:=GroupHomomorphismByImagesNC(new,p,GeneratorsOfGroup(new),
           List(GeneratorsOfGroup(sg),x->ImagesRepresentative(per,
             PreImagesRepresentative(sim,x))));
     SetIsomorphismPermGroup(new,per);
