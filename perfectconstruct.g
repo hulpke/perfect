@@ -191,6 +191,8 @@ local props,pool,test,c,f,r,tablecache,tmp;
 		tmp:=Group(r.groupinfo[i][2]);
 		SetSize(tmp,r.groupinfo[i][1]);
 		tmp:=ShallowCopy(CharacterTable(tmp));
+                Size(tmp);
+                Irr(tmp);
                 Unbind(tmp!.ConjugacyClasses); # avoid caching groups
                 Unbind(tmp!.UnderlyingGroup);
 		tablecache[i]:=tmp;
