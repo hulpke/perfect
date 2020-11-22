@@ -2,6 +2,271 @@
 # `TransformingPermutationsCharacterTables`, however with an added timeout
 # condition (give maximal permitted runtime).
 
+MatAutomorphismsFamilyTimeout:=
+    function( chainG, K, family, permutations,timeout )
+    local famlength,             # number of rows in the family
+          nonbase,               # points not in the base of `chainG'
+          stabilizes,            # local function to check generators of $G$
+          gen,                   # loop over `chainG.generators'
+          chainK,                # compatible stabilizer chain of $K$
+          allowed,               # new parameter for the backtrack search
+          ElementPropertyCoset,  # local function to search in a coset
+          FindSubgroupProperty;  # local function to extend the stab. chain
+
+    famlength:= Length( permutations );
+        
+    # Select an optimal base that allows us to prune the tree efficiently.
+    nonbase:= Difference( [ 1 .. Length( family) ],
+                          BaseStabChain( chainG ) );
+    
+    # Call a modified version of `SubgroupProperty'.
+    # Besides the parameter `K', we introduce the new parameter `allowed',
+    # a list of same length as `permutations';
+    # `allowed[<i>]' is the list of all <x> in `permutations' where the
+    # constructed permutation can lie in
+    # `permutations[<i>] * Stab( family> ) / <x>'.
+    # Initially this is `permutations' itself, but `allowed' is updated
+    # whenever an image of a base point is chosen.
+    
+    # Find a subgroup $U$ of $G$ which preserves the property <prop>,
+    # i.e., $prop( x )$ implies $prop( x * u )$ for all $x \in G, u \in U$.
+    # (Note:  This subgroup is changed in the algorithm, be careful!)
+    # Make this subgroup as large as possible with reasonable effort!
+    
+    # Improvement in our special situation:
+    # We may add those generators <gen> of $G$ that stabilize the whole row
+    # family, i.e. for which holds
+    # `<family>[i] = <family>[ i^ ( x^-1 * gen * x ) ]'.
+    
+    stabilizes:= function( family, gen, x )
+      local i;
+      for i in [ 1 .. Length( family ) ] do
+        if family[ i^x ] <> family[ ( i^gen )^x ] then
+          return false;
+        fi;
+      od;
+      return true;
+    end;
+
+    K:= SSortedList( K );
+    for gen in chainG.generators do
+      if ForAll( permutations, x -> stabilizes( family, gen, x ) ) then
+        AddSet( K, gen );
+      fi;
+    od;
+
+    # Make the bases of the stabilizer chains compatible.
+    chainK:= StabChainOp( GroupByGenerators( K, () ),
+                          rec( base    := BaseStabChain( chainG ),
+                               reduced := false ) );
+
+    # Initialize `allowed'.
+    allowed:= ListWithIdenticalEntries( famlength, permutations );
+    
+    # Search through the whole group $G = G * Id$ for an element with <prop>.
+
+    # Search for an element in a coset $S * s$ of some stabilizer $S$ of $G$.
+    # $L$ fixes $S*s$, i.e., $S*s*L = S*s$ and is a subgroup of the wanted
+    # subgroup $K$, thus $prop( x )$ implies $prop( x*l )$ for all $l \in L$.
+
+    # `S' is a stabilizer chain for $S$,
+    # `L' is a list of generators for $L$.
+    ElementPropertyCoset := function( S, s, L, allowed )
+
+      local i, j, points, p, ss, LL, elm, newallowed, union;
+
+      if Runtime()>timeout then return -1;fi;
+      # If $S$ is the trivial group check whether $s$ has the property,
+      # i.e., also the non-base points are mapped correctly.
+
+      if IsEmpty( S.generators ) then
+        for i in [ 1 .. famlength ] do
+          for p in nonbase do
+            allowed[i]:= Filtered( allowed[i],
+                           x -> ( p^s )^x in family[ p^permutations[i] ] );
+          od;
+          if IsEmpty( allowed[i] ) then
+            return fail;
+          fi;
+        od;
+        return s;
+      fi;
+
+      # Make `points' a subset of $S.orbit ^ s$ of those points which
+      # correspond to cosets that might contain elements satisfying <prop>.
+      # Make this set as small as possible with reasonable effort!
+      points:= SSortedList( OnTuples( S.orbit, s ) );
+
+      # Improvement in our special situation:
+      # For the basepoint `$b$ = S.orbit[1]' we have
+      # $b \pi \in orbit \cap \bigcap_{i}
+      # \bigcup_{\pi_j \in `allowed[i]'} [ family( b \pi_i ) ] \pi_j^{-1}$
+
+      for i in [ 1 .. famlength ] do
+        union:= [];
+        for j in allowed[i] do
+          UniteSet( union, List( family[ S.orbit[1] ^ permutations[i] ],
+                                 x -> x / j ) );
+        od;
+        IntersectSet( points, union );
+      od;
+
+      # run through the points, i.e., through the cosets of the stabilizer.
+      while not IsEmpty( points ) do
+
+        # Take a point $p$.
+        p:= points[1];
+
+        # Find a coset representative,
+        # i.e., $ss \in S$ with $S.orbit[1]^ss = p$.
+        ss:= s;
+        while S.orbit[1]^ss <> p do
+          ss:= LeftQuotient( S.transversal[p/ss], ss );
+        od;
+
+        # Find a subgroup $LL$ of $L$ which fixes $S.stabilizer * ss$,
+        # i.e., an approximation (subgroup) $LL$ of $Stabilizer( L, p )$.
+        # note that $LL$ preserves <prop> since it is a subgroup of $L$.
+        # Compute a better aproximation, for example using base change.
+        # `LL' is a list of generators of $LL$.
+        LL:= Filtered( L, l -> p^l = p );
+
+        # Search the coset $S.stabilizer * ss$ and return if successful.
+
+        # In our special situation, we adjust `allowed': 
+        newallowed:= [];
+        for i in [ 1 .. famlength ] do
+          newallowed[i]:= Filtered( allowed[i], x -> p^x in
+                              family[ S.orbit[1]^permutations[i] ] );
+        od;
+
+        elm:= ElementPropertyCoset( S.stabilizer, ss, LL, newallowed );
+        if elm=-1 or Runtime()>timeout then return -1;fi;
+        if elm <> fail then return elm; fi;
+
+        # If there was no element in $S.stab * Rep(p)$ satisfying <prop>
+        # there can be none in $S.stab * Rep(p^l) = S.stab * Rep(p) * l$
+        # for any $l \in L$ because $L$ preserves the property <prop>.
+        # Thus we can remove the entire $L$ orbit of $p$ from the points.
+        SubtractSet( points, OrbitPerms( L, p ) );
+
+      od;
+
+      # there is no element with the property <prop> in the coset  $S * s$.
+      return fail;
+    end;
+
+    # Make $L$ the subgroup with the property of some stabilizer $S$ of $G$.
+    # Upon entry $L$ is already a subgroup of this wanted subgroup.
+
+    # `S' and `L' are stabilizer chains.
+    FindSubgroupProperty := function( S, L, allowed )
+
+      local i, j, points, p, ss, LL, elm, newallowed, union;
+
+      # If $S$ is the trivial group, then so is $L$ and we are ready.
+      if IsEmpty( S.generators ) then return; fi;
+
+      # Improvement in our special situation:
+      # Adjust `allowed' (we search in the stabilizer of `S.orbit[1]').
+
+      newallowed:= [];
+      for i in [ 1 .. famlength ] do
+        newallowed[i]:= Filtered( allowed[i],
+                                  x -> S.orbit[1]^x in
+                                 family[ S.orbit[1]^permutations[i] ] );
+      od;
+
+      # Make $L.stab$ the full subgroup of $S.stab$ satisfying <prop>.
+      FindSubgroupProperty( S.stabilizer, L.stabilizer, newallowed );
+      if Runtime()>timeout then return -1;fi;
+
+      # Add the generators of `L.stabilizer' to `L.generators',
+      # update `orbit' and `transversal':
+      for elm in L.stabilizer.generators do
+        if not elm in L.generators then
+          AddGeneratorsExtendSchreierTree( L, [ elm ] );
+        fi;
+      od;
+
+      # Make `points' a subset of $S.orbit$ of those points which
+      # correspond to cosets that might contain elements satisfying <prop>.
+      # Make this set as small as possible with reasonable effort!
+      points := SSortedList( S.orbit );
+
+      # Improvement in our special situation:
+      # For the basepoint `$b$ = S.orbit[1]', we have
+      # $b \pi \in orbit \cap \bigcap_{i}
+      # \bigcup_{j \in `allowed[i]'} [ family[ b \pi_i ] ] \pi_j^{-1}$.
+      for i in [ 1 .. famlength ] do
+        union:= [];
+        for j in allowed[i] do
+          UniteSet( union, List( family[ S.orbit[1] ^ permutations[i] ],
+                                 x -> x / j ) );
+        od;
+        IntersectSet( points, union );
+      od;
+
+      # Suppose that $x \in S.stab * Rep(S.orbit[1]^l)$ satisfies <prop>,
+      # since $S.stab*Rep(S.orbit[1]^l)=S.stab*l$ we have $x/l \in S.stab$.
+      # Because $l \in L$ it follows that $x/l$ satisfies <prop> also, and
+      # since $L.stab$ is the full subgroup of $S.stab$ satisfying <prop>
+      # it follows that $x/l \in L.stab$ and so $x \in L.stab * l \<= L$.
+      # thus we can remove the entire $L$ orbit of $p$ from the points.
+      SubtractSet( points, OrbitPerms( L.generators, S.orbit[1] ) );
+
+      # Run through the points, i.e., through the cosets of the stabilizer.
+      while not IsEmpty( points ) do
+
+        # Take a point $p$.
+        p:= points[1];
+
+        # Find a coset representative,
+        # i.e., $ss  \in  S, S.orbit[1]^ss = p$.
+        ss:= S.identity;
+        while S.orbit[1]^ss <> p do
+          ss:= LeftQuotient( S.transversal[p/ss], ss );
+        od;
+
+        # Find a subgroup $LL$ of $L$ which fixes $S.stabilizer * ss$,
+        # i.e., an approximation (subgroup) $LL$ of $Stabilizer( L, p )$.
+        # Note that $LL$ preserves <prop> since it is a subgroup of $L$.
+        # Compute a better aproximation, for example using base change.
+        LL:= Filtered( L.generators, l -> p^l = p );
+
+        # Search the coset $S.stabilizer * ss$ and add if successful.
+
+        # Adjust `allowed'.
+        newallowed:= [];
+        for i in [ 1 .. famlength ] do
+          newallowed[i]:= Filtered( allowed[i], x -> p^x in
+                                   family[ S.orbit[1]^permutations[i] ] );
+        od;
+
+        elm:= ElementPropertyCoset( S.stabilizer, ss, LL, newallowed );
+        if elm=-1 or Runtime()>timeout then return -1;fi;
+        if elm <> fail then
+          AddGeneratorsExtendSchreierTree( L, [ elm ] );
+        fi;
+
+        # If there was no element in $S.stab * Rep(p)$ satisfying  <prop>
+        # there can be none in  $S.stab * Rep(p^l) = S.stab * Rep(p) * l$
+        # for any $l \in L$ because $L$ preserves  the  property  <prop>.
+        # Thus we can remove the entire $L$ orbit of $p$ from the points.
+        # <<this must be reformulated>>
+        SubtractSet( points, OrbitPerms( L.generators, p ) );
+
+      od;
+
+      # There is no element with the property <prop> in the coset $S * s$.
+      return;
+    end;
+
+    FindSubgroupProperty( chainG, chainK, allowed );
+    if Runtime()>timeout then return -1;fi;
+    return chainK;
+end;
+
 TransformingPermutationsTimeout:=function( mat1, mat2,timeout )
     local i, j, k,        # loop variables
           fam1,
@@ -212,9 +477,9 @@ TransformingPermutationsTimeout:=function( mat1, mat2,timeout )
           j:= k;
         od;
         if Runtime()>timeout then return -1;fi;
-        subgrp:= MatAutomorphismsFamily( G, [], family,
-                                         fam2.permutations[i] );
-        if Runtime()>timeout then return -1;fi;
+        subgrp:= MatAutomorphismsFamilyTimeout( G, [], family,
+                                         fam2.permutations[i],timeout );
+        if subgrp=-1 or Runtime()>timeout then return -1;fi;
         trans:= TransformingPermutationFamily( G, subgrp.generators,
                                fam1.permutations[i],
                                fam2.permutations[i], bij_col,
