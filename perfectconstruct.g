@@ -14,7 +14,7 @@ PERFUNKNOWN:=[61440, 86016, 122880, 172032, 245760, 344064, 368640, 491520,
 
 #Limit for TransformingPermutationsCharacterTables (class number) in
 #identifying factor groups
-TPCTLIMIT:=600;
+TPCTLIMIT:=200;
 
 # seed is list of orders
 MakePerfectGroupOrders:=function(seed)
