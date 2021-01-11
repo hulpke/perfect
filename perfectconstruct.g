@@ -100,8 +100,10 @@ FINGERPRINTPROPERTIES:=[
   #g->Collected(Flat(Irr(CharacterTable(g)))),
 ];
 
+CHEAPFINGERPRINTLIMIT:=4;  # the first 4 fingerprint tests are cheap-ish
+
 GrplistIds:=function(l)
-local props,pool,test,c,f,r,tablecache,tmp;
+local props,pool,test,c,f,r,tablecache,tmp,cheaplim;
   test:=function(p)
   local a,new,sel,i,dup,tmp;
     if c=Length(l) then return;fi;# not needed
@@ -119,18 +121,26 @@ local props,pool,test,c,f,r,tablecache,tmp;
       c:=Length(Set(pool));
     fi;
   end;
+
   props:=[];
   pool:=List(l,x->[]);c:=1;
   for f in FINGERPRINTPROPERTIES do test(f);od;
+  cheaplim:=PositionProperty(List(props,x->Position(FINGERPRINTPROPERTIES,x)),
+    x->x>CHEAPFINGERPRINTLIMIT);
+  if cheaplim=fail then cheaplim:=Length(props);
+  else cheaplim:=cheaplim-1;fi;
+
   if c<Length(l) then
     tablecache:=[];
     Print("will have to rely on isomorphism tests\n");
   fi;
+
   r:=rec(props:=props,pool:=pool,
     groupinfo:=List(l,x->[Size(x),GeneratorsOfGroup(x)]),
     isomneed:=Filtered([1..Length(pool)],x->Number(pool,y->y=pool[x])>1),
+
     idfunc:=function(arg)
-      local gorig,a,f,p,g,fingerprints,cands,badset,goodset,i;
+      local gorig,a,f,p,g,fingerprints,cands,badset,goodset,i,cheap,rprop;
         gorig:=arg[1];
         if Length(arg)>1 then
           badset:=arg[2];
@@ -139,8 +149,11 @@ local props,pool,test,c,f,r,tablecache,tmp;
           badset:=[];
           goodset:=[];
         fi;
+        cheap:=arg[Length(arg)]=true; #do cheap test only?
+
         if Length(r.pool)=1 then return 1;fi;
         g:=gorig;
+
         if IsBound(g!.fingerprints) then
           fingerprints:=g!.fingerprints;
         else
@@ -158,7 +171,9 @@ local props,pool,test,c,f,r,tablecache,tmp;
           SetSize(g,a);
         fi;
         a:=[];
-        for f in r.props do
+        if cheap then rprop:=r.props{[1..cheaplim]};
+        else rprop:=r.props;fi;
+        for f in rprop do
           p:=PositionProperty(fingerprints,x->x[1]=f);
           if p=fail then
             Add(a,f(g));
@@ -181,6 +196,12 @@ local props,pool,test,c,f,r,tablecache,tmp;
           p:=Position(r.pool,a);
           if IsInt(p) and not p in r.isomneed then return p;fi;
         od;
+        if cheap then
+          a:=Filtered([1..Length(r.pool)],
+            x->r.pool[x]{[1..Minimum(cheaplim,Length(r.pool[x]))]}=a);
+          return a;
+        fi;
+
         a:=Filtered([1..Length(r.pool)],x->r.pool[x]=a);
 
 	if Length(ConjugacyClasses(g))<=TPCTLIMIT then
@@ -362,16 +383,29 @@ local respp,cf,m,mpos,coh,fgens,comp,reps,v,new,isok,pema,pf,gens,nt,quot,
           # any smaller index -> discard
           # any equal index -> test
           # otherwise accept
+
+          # first do all with cheap test only (to find bad)
           k:=1;
           while isok<>false and k<=Length(nt) do
-            qk:=ids.idfunc(pf/nt[k],[1..j-1],[j+1..primax]);
-            if (IsInt(qk) and qk<j) or qk="bad" then isok:=false;
-            elif IsInt(qk) and qk=j then isok:=fail;fi;
+            qk:=ids.idfunc(pf/nt[k],[1..j-1],[j+1..primax],
+              true); # cheap test
+            if (IsInt(qk) and qk<j) or qk="bad" then isok:=false;fi;
             k:=k+1;
           od;
 
+          if isok=false then
+            Print("quickdiscard\n");
+          else
+            k:=1;
+            while isok<>false and k<=Length(nt) do
+              qk:=ids.idfunc(pf/nt[k],[1..j-1],[j+1..primax]);
+              if (IsInt(qk) and qk<j) or qk="bad" then isok:=false;
+              elif IsInt(qk) and qk=j then isok:=fail;fi;
+              k:=k+1;
+            od;
+          fi;
+
           if (isok<>false and ForAll(respp,x->MyIsomTest(x,pf)=false)) then
-#    if ForAny(respp,x->MyIsomTest(x,pf)<>false) then Error("huh"); fi;
             Add(res,new);
             Add(respp,pf); # local list
             Print("found nr. ",Length(res),"\n");
