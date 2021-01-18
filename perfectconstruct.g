@@ -194,11 +194,15 @@ local props,pool,test,c,f,r,tablecache,tmp,cheaplim;
           if Length(cands)>1 then Print("Cands=",cands,"\n");fi;
 
           p:=Position(r.pool,a);
-          if IsInt(p) and not p in r.isomneed then return p;fi;
+          if IsInt(p) and not p in r.isomneed then 
+            Print("exact:",p,"\n");
+            return p;
+          fi;
         od;
         if cheap then
           a:=Filtered([1..Length(r.pool)],
             x->r.pool[x]{[1..Minimum(cheaplim,Length(r.pool[x]))]}=a);
+          Print("cheap:",a,"\n");
           return a;
         fi;
 
@@ -236,9 +240,11 @@ local props,pool,test,c,f,r,tablecache,tmp,cheaplim;
           tmp:=Group(r.groupinfo[i][2]);
           SetSize(tmp,r.groupinfo[i][1]);
 	  if IsomorphismGroups(g,tmp)<>fail then
+            Print("isomtest:",i,"\n");
 	    return i;
 	  fi;
 	od;
+        Print("table:",a[1],"\n");
 	return a[1];
       end);
   l:=false; # clean memory
@@ -405,7 +411,13 @@ local respp,cf,m,mpos,coh,fgens,comp,reps,v,new,isok,pema,pf,gens,nt,quot,
             od;
           fi;
 
-          if (isok<>false and ForAll(respp,x->MyIsomTest(x,pf)=false)) then
+          if (isok=fail and Length(respp)>0) then
+            Print("Need ",Length(respp)," isomorphism tests\n");
+elif (isok=true and Length(respp)>0) then
+  Print("Avoid ",Length(respp)," isomorphism tests\n");
+          fi;
+
+          if (isok=true or (isok=fail and ForAll(respp,x->MyIsomTest(x,pf)=false))) then
             Add(res,new);
             Add(respp,pf); # local list
             Print("found nr. ",Length(res),"\n");
