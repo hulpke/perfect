@@ -393,7 +393,8 @@ local respp,cf,m,mpos,coh,fgens,comp,reps,v,new,isok,pema,pf,gens,nt,quot,
           # first do all with cheap test only (to find bad)
           k:=1;
           while isok<>false and k<=Length(nt) do
-            qk:=ids.idfunc(pf/nt[k],[1..j-1],[j+1..primax],
+            # count j also as good, as we only use to discard
+            qk:=ids.idfunc(pf/nt[k],[1..j-1],[j..primax],
               true); # cheap test
             if (IsInt(qk) and qk<j) or qk="bad" then isok:=false;fi;
             k:=k+1;
