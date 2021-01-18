@@ -394,8 +394,9 @@ local respp,cf,m,mpos,coh,fgens,comp,reps,v,new,isok,pema,pf,gens,nt,quot,
           od;
 
           if isok=false then
-            Print("quickdiscard\n");
-          else
+            Print("quickdecide\n");
+          else 
+            Print("try harder\n");
             k:=1;
             while isok<>false and k<=Length(nt) do
               qk:=ids.idfunc(pf/nt[k],[1..j-1],[j+1..primax]);
@@ -426,7 +427,7 @@ local respp,cf,m,mpos,coh,fgens,comp,reps,v,new,isok,pema,pf,gens,nt,quot,
   # cleanup of cached data to save memory
   for m in [1..Length(res)] do
     res[m]:=MemoryEfficientVersion(res[m]);
-
+    res[m]!.builtfrom:=j;
   od;
   return res;
 end;
