@@ -303,7 +303,7 @@ end;
 # split out as that might help with memory
 DoPerfectConstructionFor:=function(q,j,nts,ids)
 local respp,cf,m,mpos,coh,fgens,comp,reps,v,new,isok,pema,pf,gens,nt,quot,
-      res,qk,p,e,k,primax;
+      res,qk,p,e,k,primax,au;
 
   primax:=NrPerfectGroups(Size(q));
   p:=Factors(nts)[1];
@@ -336,7 +336,40 @@ local respp,cf,m,mpos,coh,fgens,comp,reps,v,new,isok,pema,pf,gens,nt,quot,
 
   cf:=Filtered(cf[2],x->x.dimension=e);
 
-  if Length(cf)>1 then Error("do aut");fi;
+  if Length(cf)>1 then 
+    Print("Test for isomorphic modules\n");
+    # eliminate images under automorphisms
+    pema:=AutomorphismGroup(q);
+    comp:=[];
+    new:=[];
+    for m in cf do
+      if not ForAny(comp,x->MTX.Isomorphism(m,x)<>fail) then
+        Add(comp,m);
+        Add(new,m);
+        # autom orbit
+        k:=Length(comp);
+        while k<=Length(comp) do
+          qk:=GroupHomomorphismByImages(q,Group(comp[k].generators),GeneratorsOfGroup(q),
+            comp[k].generators);
+          for au in GeneratorsOfGroup(pema) do
+            reps:=List(GeneratorsOfGroup(q),
+              x->ImagesRepresentative(qk,ImagesRepresentative(au,x)));
+            reps:=GModuleByMats(reps,GF(p));
+            MTX.IsIrreducible(reps);
+            if not ForAny(comp,x->MTX.Isomorphism(reps,x)<>fail) then
+              Add(comp,reps);
+            fi;
+          od;
+          k:=k+1;
+        od;
+      fi;
+    od;
+
+    if new<>cf then
+      Print("Reduce ",Length(cf)," to ",Length(new)," modules\n");
+      cf:=new;
+    fi;
+  fi;
 
   for m in cf do
     mpos:=Position(cf,m);
