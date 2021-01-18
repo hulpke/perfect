@@ -336,6 +336,8 @@ local respp,cf,m,mpos,coh,fgens,comp,reps,v,new,isok,pema,pf,gens,nt,quot,
 
   cf:=Filtered(cf[2],x->x.dimension=e);
 
+  if Length(cf)>1 then Error("do aut");fi;
+
   for m in cf do
     mpos:=Position(cf,m);
     Print("Module dimension ",m.dimension,"\n");
