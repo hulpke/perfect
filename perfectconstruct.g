@@ -303,7 +303,7 @@ end;
 # split out as that might help with memory
 DoPerfectConstructionFor:=function(q,j,nts,ids)
 local respp,cf,m,mpos,coh,fgens,comp,reps,v,new,isok,pema,pf,gens,nt,quot,
-      res,qk,p,e,k,primax,au;
+      res,qk,p,e,k,primax,au,oldqk;
 
   primax:=NrPerfectGroups(Size(q));
   p:=Factors(nts)[1];
@@ -427,10 +427,11 @@ local respp,cf,m,mpos,coh,fgens,comp,reps,v,new,isok,pema,pf,gens,nt,quot,
 
           # first do all with cheap test only (to find bad)
           k:=1;
+          oldqk:=[];
           while isok<>false and k<=Length(nt) do
-            # count j also as good, as we only use to discard
-            qk:=ids.idfunc(pf/nt[k],[1..j-1],[j..primax],
+            qk:=ids.idfunc(pf/nt[k],[1..j-1],[j+1..primax],
               true); # cheap test
+            oldqk[k]:=qk;
             if (IsInt(qk) and qk<j) or qk="bad" then isok:=false;fi;
             k:=k+1;
           od;
@@ -438,10 +439,15 @@ local respp,cf,m,mpos,coh,fgens,comp,reps,v,new,isok,pema,pf,gens,nt,quot,
           if isok=false then
             Print("quickdecide\n");
           else 
-            Print("try harder\n");
             k:=1;
             while isok<>false and k<=Length(nt) do
-              qk:=ids.idfunc(pf/nt[k],[1..j-1],[j+1..primax]);
+              qk:=oldqk[k];
+              if IsList(qk) and ForAny(qk,IsInt) then
+                # try to do better
+                Print("try harder for ",qk,"\n");
+                qk:=ids.idfunc(pf/nt[k],[1..j-1],[j+1..primax]);
+#if qk<>oldqk[k] then Error("UGH",qk,oldqk[k]);
+              fi;
               if (IsInt(qk) and qk<j) or qk="bad" then isok:=false;
               elif IsInt(qk) and qk=j then isok:=fail;fi;
               k:=k+1;
