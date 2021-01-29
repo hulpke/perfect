@@ -462,7 +462,10 @@ elif (isok=true and Length(respp)>0) then
 
           if (isok=true or (isok=fail and ForAll(respp,x->MyIsomTest(x,pf)=false))) then
             Add(res,new);
-            Add(respp,pf); # local list
+            if isok=fail then
+              Add(respp,pf); # local list of those that have multiple normals with this
+              # factor type. Only these needed for isom test
+            fi;
             Print("found nr. ",Length(res),"\n");
           else
             Print("smallerc\n");
