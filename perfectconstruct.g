@@ -503,6 +503,7 @@ local globalres,resp,d,i,j,nt,p,e,q,cf,m,coh,v,new,quot,nts,pf,pl,comp,reps,
   if globalres=fail then
     globalres:=[];
   else
+    globalres:=ShallowCopy(globalres);
     Print("Got ",Length(globalres)," existing groups\n");
   fi;
 
