@@ -499,7 +499,12 @@ local globalres,resp,d,i,j,nt,p,e,q,cf,m,coh,v,new,quot,nts,pf,pl,comp,reps,
   from:=ValueOption("from");
   dosubdir:=false;
 
-  globalres:=[];
+  globalres:=ValueOption("globalres");
+  if globalres=fail then
+    globalres:=[];
+  else
+    Print("Got ",Length(globalres)," existing groups\n");
+  fi;
 
   # simple groups
   ran:=SimpleGroupsIterator(n,n);
@@ -572,6 +577,38 @@ local globalres,resp,d,i,j,nt,p,e,q,cf,m,coh,v,new,quot,nts,pf,pl,comp,reps,
     fi;
   od;
   return globalres;
+end;
+
+StoreTempResult:=function(file,l)
+local i,iso;
+  PrintTo(file,"return [");
+  for i in l do
+    iso:=IsomorphismPermGroup(i);
+    AppendTo(file,"[",i!.builtfrom,",",List(GeneratorsOfGroup(i),String),",\n",
+      List(RelatorsOfFpGroup(i),LetterRepAssocWord),",\n",
+      List(MappingGeneratorsImages(iso)[1],
+         x->LetterRepAssocWord(UnderlyingElement(x))),",\n",
+      MappingGeneratorsImages(iso)[2],"],\n");
+  od;
+  AppendTo(file,"];");
+end;
+
+LoadTempResult:=function(file)
+local res,l,i,f,g,gens,rels;
+  res:=[];
+  l:=ReadAsFunction(file)();
+  for i in l do
+    f:=FreeGroup(i[2]);
+    rels:=List(i[3],x->AssocWordByLetterRep(FamilyObj(One(f)),x));
+    g:=f/rels;
+    g!.builtfrom:=i[1];
+    gens:=List(i[4],x->AssocWordByLetterRep(FamilyObj(One(f)),x));
+    gens:=List(gens,x->ElementOfFpGroup(FamilyObj(One(g)),x));
+    SetIsomorphismPermGroup(g,
+      GroupHomomorphismByImagesNC(g,Group(i[5]),gens,i[5]));
+    Add(res,g);
+  od;
+  return res;
 end;
 
 # Function to generate library file
