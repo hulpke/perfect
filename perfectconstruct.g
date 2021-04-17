@@ -633,6 +633,7 @@ local i,j,a,p,s,w,idx,sz,g,sim,sg,newf,newrels,new,per,o,rk,smallgenfp,gs;
 
   w:=SizeScreen()[1];
   idx:=Position(PERFRec.sizes,sz);
+  if idx=fail then idx:=2*Length(PERFRec.sizes);fi;
   a:=ShallowCopy(PERFRec.number);
   a[idx]:=Length(l);
 
