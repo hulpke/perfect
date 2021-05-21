@@ -652,6 +652,11 @@ local i,j,a,p,s,w,idx,sz,g,sim,sg,newf,newrels,new,per,o,rk,smallgenfp,gs;
     if i>1 then AppendTo(file,",\n");fi;
 
     g:=l[i];
+    if not IsFpGroup(g) then
+      p:=IsomorphismFpGroup(g);
+      g:=Range(p);
+      SetSize(g,Size(Source(p)));
+    fi;
     sim:=IsomorphismSimplifiedFpGroup(g); # kill redundant stuff
     sg:=Range(sim);
     rk:=Length(GeneratorsOfGroup(sg));
