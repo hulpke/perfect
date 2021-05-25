@@ -570,8 +570,8 @@ local globalres,resp,d,i,j,nt,p,e,q,cf,m,coh,v,new,quot,nts,pf,pl,comp,reps,
         if Length(all)>0 then
           for j in Cartesian(old,all) do
             Print("Direct Product:",j,"\n");
-            j:=List(j,x->Image(IsomorphismFpGroup(x)));
-            Add(globalres,DirectProduct(j[1],j[2]));
+            #j:=List(j,x->Image(IsomorphismFpGroup(x)));
+            Add(globalres,Image(IsomorphismFpGroup(DirectProduct(j[1],j[2]))));
           od;
         fi;
       fi;
@@ -712,7 +712,9 @@ local i,j,a,p,s,w,idx,sz,g,sim,sg,newf,newrels,new,per,o,rk,smallgenfp,gs;
       if not HasAbelianFactorGroup(s[j-1],s[j]) then
         w:=Filtered([1..Length(PERFRec.sizeNumberSimpleGroup)],
           x->PERFRec.sizeNumberSimpleGroup[x][1]=IndexNC(s[j-1],s[j]));
-        if Length(w)>1 then Error("size not unique");fi;
+        if Length(w)>1 then Error(
+          "size not unique -- Make sure `w[1]` is correct wirh `s[j-1]/s[j]`");
+        fi;
         w:=w[1];
         Add(a,w);
       fi;
