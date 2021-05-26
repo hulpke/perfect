@@ -580,6 +580,35 @@ local globalres,resp,d,i,j,nt,p,e,q,cf,m,coh,v,new,quot,nts,pf,pl,comp,reps,
   return globalres;
 end;
 
+# very basic order finder -- perfect of smaller order times prime powers.
+# Exponent 1 only if not coprime.
+PossibleOrdersPerfectGroups:=function(from,upto)
+local sz,l,p,q,s,bound;
+  sz:=Intersection(SizesPerfectGroups(),[2..QuoInt(upto,2)]);
+  l:=[];
+  p:=1;
+  repeat 
+    p:=NextPrimeInt(p);
+Print(p,"\n");
+    q:=p;
+    while q*sz[1]<=upto do
+      s:=1;
+      bound:=QuoInt(upto,q);
+      while s<=Length(sz) and sz[s]<=bound do
+        if q<>p 
+          #1-dim module only if divides -- otherwise split and trivial
+          # action -- direct factor
+          or sz[s] mod q=0 then
+          AddSet(l,sz[s]*q);
+        fi;
+        s:=s+1;
+      od;
+      q:=q*p;
+    od;
+  until p*sz[1]>upto;
+  return Intersection(l,[from..upto]);
+end;
+
 StoreTempResult:=function(file,l)
 local i,iso;
   PrintTo(file,"return [");
@@ -712,7 +741,7 @@ local i,j,a,p,s,w,idx,sz,g,sim,sg,newf,newrels,new,per,o,rk,smallgenfp,gs;
       if not HasAbelianFactorGroup(s[j-1],s[j]) then
         w:=Filtered([1..Length(PERFRec.sizeNumberSimpleGroup)],
           x->PERFRec.sizeNumberSimpleGroup[x][1]=IndexNC(s[j-1],s[j]));
-        if Length(w)>1 then Error(
+        if Length(w)<>1 then Error(
           "size not unique -- Make sure `w[1]` is correct wirh `s[j-1]/s[j]`");
         fi;
         w:=w[1];
