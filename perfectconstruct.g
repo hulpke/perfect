@@ -5,8 +5,6 @@
 # MakePerfectGroupOrders(seedorders) extends list of orders by 2, by adding
 # simple groups and products with prime powers, excluding coprime primes
 
-Read("tabletrans.g");
-
 # Orders that were not covered in Holt/Plesken lists
 #PERFUNKNOWN:=Filtered(SizesPerfectGroups(),x->NrPerfectLibraryGroups(x)=0);
 PERFUNKNOWN:=[61440, 86016, 122880, 172032, 245760, 344064, 368640, 491520,
@@ -643,7 +641,8 @@ end;
 
 # Function to generate library file
 PrintPerfectStorageData:=function(file,l)
-local i,j,a,p,s,w,idx,sz,g,sim,sg,newf,newrels,new,per,o,rk,smallgenfp,gs;
+local i,j,a,p,s,w,idx,sz,g,sim,sg,newf,newrels,new,per,o,rk,smallgenfp,gs,num,
+  upd,tbl,stb,jl,jt,hast;
 
   smallgenfp:=function(a)
   local sz,imgs,i,c;
@@ -678,8 +677,17 @@ local i,j,a,p,s,w,idx,sz,g,sim,sg,newf,newrels,new,per,o,rk,smallgenfp,gs;
   AppendTo(file,"number:=",a,";\n\n","PERFGRP[",idx,"]:=[");
 
   for i in [1..Length(l)] do
+    sz:=Size(l[i]);
     Print("Doing ",i,"\n");
+    if HasPerfectIdentification(l[i]) then
+      num:=PerfectIdentification(l[i]);
+      upd:=true;
+    else
+      num:=[sz,i];
+      upd:=false;
+    fi;
     if i>1 then AppendTo(file,",\n");fi;
+    if upd then AppendTo(file,"# <<<< \n\n");fi;
 
     g:=l[i];
     if not IsFpGroup(g) then
@@ -687,45 +695,79 @@ local i,j,a,p,s,w,idx,sz,g,sim,sg,newf,newrels,new,per,o,rk,smallgenfp,gs;
       g:=Range(p);
       SetSize(g,Size(Source(p)));
     fi;
-    sim:=IsomorphismSimplifiedFpGroup(g); # kill redundant stuff
-    sg:=Range(sim);
-    rk:=Length(GeneratorsOfGroup(sg));
-    newf:=FreeGroup(List([1..Length(GeneratorsOfGroup(sg))],x->[CHARS_LALPHA[x]]));
-    newrels:=List(RelatorsOfFpGroup(sg),
-      x->MappedWord(x,FreeGeneratorsOfFpGroup(sg),GeneratorsOfGroup(newf)));
-    new:=newf/newrels; SetSize(new,Size(g));
+    if not upd then
+      sim:=IsomorphismSimplifiedFpGroup(g); # kill redundant stuff
+      sg:=Range(sim);
+      rk:=Length(GeneratorsOfGroup(sg));
+      newf:=FreeGroup(List([1..Length(GeneratorsOfGroup(sg))],x->[CHARS_LALPHA[x]]));
+      newrels:=List(RelatorsOfFpGroup(sg),
+        x->MappedWord(x,FreeGeneratorsOfFpGroup(sg),GeneratorsOfGroup(newf)));
+      new:=newf/newrels; SetSize(new,Size(g));
 
-    per:=IsomorphismPermGroup(g);
-    # reduce degree until kingdom come
-    repeat
-      p:=NrMovedPoints(Range(per));
-      per:=per*SmallerDegreePermutationRepresentation(Image(per));
-    until p=NrMovedPoints(Range(per));
-    p:=Image(per);
-    per:=GroupHomomorphismByImagesNC(new,p,GeneratorsOfGroup(new),
-          List(GeneratorsOfGroup(sg),x->ImagesRepresentative(per,
-            PreImagesRepresentative(sim,x))));
-    SetIsomorphismPermGroup(new,per);
+      per:=IsomorphismPermGroup(g);
+      # reduce degree until kingdom come
+      repeat
+        p:=NrMovedPoints(Range(per));
+        per:=per*SmallerDegreePermutationRepresentation(Image(per));
+      until p=NrMovedPoints(Range(per));
+      p:=Image(per);
+      per:=GroupHomomorphismByImagesNC(new,p,GeneratorsOfGroup(new),
+            List(GeneratorsOfGroup(sg),x->ImagesRepresentative(per,
+              PreImagesRepresentative(sim,x))));
+      SetIsomorphismPermGroup(new,per);
+    else
+      new:=g;
+      newrels:=RelatorsOfFpGroup(g);
+      rk:=Length(GeneratorsOfGroup(g));
+      per:=IsomorphismPermGroup(g);
+      p:=Image(per);
+    fi;
+
     o:=Orbits(p,MovedPoints(p));
-    s:=List(o,x->PreImage(per,Stabilizer(p,x[1])));
+    stb:=List(o,x->Stabilizer(p,x[1]));
+    s:=List(stb,x->PreImage(per,x));
     gs:=List(s,x->ShallowCopy(GeneratorsOfGroup(x))); # trigger gens
 
-    AppendTo(file,"# ",sz,".",i,"\n",
+    AppendTo(file,"# ",num[1],".",num[2],"\n",
     "[[1,\"",CHARS_LALPHA{[1..rk]},"\",\nfunction(");
     for j in [1..rk] do
       if j>1 then AppendTo(file,",");fi;
       AppendTo(file,CHARS_LALPHA{[j]});
     od;
     AppendTo(file,")\nreturn [",newrels,",\n");
+
     a:=[];
     for j in gs do
       j:=List(j,UnderlyingElement);
-      TCENUM.CosetTableFromGensAndRels(FreeGeneratorsOfFpGroup(new),RelatorsOfFpGroup(new),j);
+
+      hast:=false;
+      jl:=Length(j);
+      tbl:=[];
+      while jl>15 and IsList(tbl) do
+        jt:=j{Union([1..10],List([1..QuoInt(jl,2)],x->Random([1..jl])))};
+        tbl:=TCENUM.CosetTableFromGensAndRels(
+          FreeGeneratorsOfFpGroup(new),RelatorsOfFpGroup(new),jt:quiet);
+        if IsList(tbl) then
+          Print("genreduce ",Length(jt),"\n");
+          j:=jt;
+          jl:=Length(j);
+          hast:=true;
+        fi;
+      od;
+
+      if not hast then
+        # force that coset enum finishes
+        tbl:=TCENUM.CosetTableFromGensAndRels(
+          FreeGeneratorsOfFpGroup(new),RelatorsOfFpGroup(new),j);
+        if not IsList(tbl) then Error("cosetenum!");fi;
+      fi;
+
       Add(a,j);
     od;
 
-    AppendTo(file,a,"];\nend,\n",List(o,Length),"],\n\"PG",sz,".",i,"\",",
-    "0," # no hpNumber
+    if upd then AppendTo(file,"\n# >>>> \n");fi;
+    AppendTo(file,a,"];\nend,\n",List(o,Length),"],\n\"PG",num[1],".",num[2],
+      "\",", "0," # no hpNumber
     );
     a:=Centre(p);
     if IsSimpleGroup(p/a) then
@@ -758,3 +800,5 @@ local i,j,a,p,s,w,idx,sz,g,sim,sg,newf,newrels,new,per,o,rk,smallgenfp,gs;
 
   AppendTo(file,"];\n");
 end;
+
+Read("tabletrans.g");
