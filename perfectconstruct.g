@@ -642,7 +642,7 @@ end;
 # Function to generate library file
 PrintPerfectStorageData:=function(file,l)
 local i,j,a,p,s,w,idx,sz,g,sim,sg,newf,newrels,new,per,o,rk,smallgenfp,gs,num,
-  upd,tbl,stb,jl,jt,hast;
+  upd,tbl,stb,jl,jt,hast,jp;
 
   smallgenfp:=function(a)
   local sz,imgs,i,c;
@@ -737,7 +737,8 @@ local i,j,a,p,s,w,idx,sz,g,sim,sg,newf,newrels,new,per,o,rk,smallgenfp,gs,num,
     AppendTo(file,")\nreturn [",newrels,",\n");
 
     a:=[];
-    for j in gs do
+    for jp in [1..Length(gs)] do
+      j:=gs[jp];
       j:=List(j,UnderlyingElement);
 
       hast:=false;
@@ -747,7 +748,7 @@ local i,j,a,p,s,w,idx,sz,g,sim,sg,newf,newrels,new,per,o,rk,smallgenfp,gs,num,
         jt:=j{Union([1..10],List([1..QuoInt(jl,2)],x->Random([1..jl])))};
         tbl:=TCENUM.CosetTableFromGensAndRels(
           FreeGeneratorsOfFpGroup(new),RelatorsOfFpGroup(new),jt:quiet);
-        if IsList(tbl) then
+        if IsList(tbl) and Length(tbl[1])=Length(o[jp]) then
           Print("genreduce ",Length(jt),"\n");
           j:=jt;
           jl:=Length(j);
@@ -759,7 +760,9 @@ local i,j,a,p,s,w,idx,sz,g,sim,sg,newf,newrels,new,per,o,rk,smallgenfp,gs,num,
         # force that coset enum finishes
         tbl:=TCENUM.CosetTableFromGensAndRels(
           FreeGeneratorsOfFpGroup(new),RelatorsOfFpGroup(new),j);
-        if not IsList(tbl) then Error("cosetenum!");fi;
+        if not (IsList(tbl) and Length(tbl[1])=Length(o[jp])) then 
+          Error("cosetenum!");
+        fi;
       fi;
 
       Add(a,j);
