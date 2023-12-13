@@ -30,7 +30,7 @@ local from, upto,it,sim,i,a,ord,pp,j;
       Add(ord,a);
     fi;
   od;
-  
+
   # Direct Products of simple
   pp:=ShallowCopy(sim);
 
@@ -181,7 +181,7 @@ local props,pool,test,c,f,r,tablecache,tmp,cheaplim;
           fi;
           cands:=Filtered([1..Length(r.pool)],x->
             Length(r.pool[x])>=Length(a) and r.pool[x]{[1..Length(a)]}=a);
-          if IsSubset(badset,cands) then 
+          if IsSubset(badset,cands) then
             Print("badcand ",cands,"\n");
             return "bad";
           fi;
@@ -192,7 +192,7 @@ local props,pool,test,c,f,r,tablecache,tmp,cheaplim;
           if Length(cands)>1 then Print("Cands=",cands,"\n");fi;
 
           p:=Position(r.pool,a);
-          if IsInt(p) and not p in r.isomneed then 
+          if IsInt(p) and not p in r.isomneed then
             Print("exact:",p,"\n");
             return p;
           fi;
@@ -287,11 +287,11 @@ local c,d,f;
   fi;
 
   c:=Size(g);
-  if Length(GeneratorsOfGroup(g))>5 then 
+  if Length(GeneratorsOfGroup(g))>5 then
     g:=Group(SmallGeneratingSet(g));
     SetSize(g,c);
   fi;
-  if Length(GeneratorsOfGroup(h))>5 then 
+  if Length(GeneratorsOfGroup(h))>5 then
     h:=Group(SmallGeneratingSet(h));
     SetSize(h,c);
   fi;
@@ -304,6 +304,9 @@ local respp,cf,m,mpos,coh,fgens,comp,reps,v,new,isok,pema,pf,gens,nt,quot,
       res,qk,p,e,k,primax,au,oldqk;
 
   primax:=NrPerfectGroups(Size(q));
+  if primax=fail and IsBound(PERFECTLIST[Size(q)]) then
+    primax:=Length(PERFECTLIST[Size(q)]);
+  fi;
   p:=Factors(nts)[1];
   e:=LogInt(nts,p);
   res:=[];
@@ -311,11 +314,11 @@ local respp,cf,m,mpos,coh,fgens,comp,reps,v,new,isok,pema,pf,gens,nt,quot,
 
   # is there a chance for modules -- which factors would fit into GL
   quot:=Size(GL(e,p));
-  cf:=Filtered(NormalSubgroups(q),x->IndexNC(q,x)>1 
+  cf:=Filtered(NormalSubgroups(q),x->IndexNC(q,x)>1
     and (quot mod IndexNC(q,x)=0));
   if Length(cf)=0 then cf:=q;
   else cf:=Intersection(cf);fi;
-  
+
   if Size(cf)=1 then
     new:=IdentityMapping(q);
     cf:=IrreducibleModules(q,GF(p),e);
@@ -334,7 +337,7 @@ local respp,cf,m,mpos,coh,fgens,comp,reps,v,new,isok,pema,pf,gens,nt,quot,
 
   cf:=Filtered(cf[2],x->x.dimension=e);
 
-  if Length(cf)>1 then 
+  if Length(cf)>1 then
     Print("Test for isomorphic modules\n");
     # eliminate images under automorphisms
     pema:=AutomorphismGroup(q);
@@ -412,7 +415,7 @@ local respp,cf,m,mpos,coh,fgens,comp,reps,v,new,isok,pema,pf,gens,nt,quot,
               Concatenation(
               List(GeneratorsOfGroup(Range(coh.fphom)),
                 x->PreImagesRepresentative(coh.fphom,x)),
-                ListWithIdenticalEntries(coh.module.dimension, 
+                ListWithIdenticalEntries(coh.module.dimension,
                   One(coh.group))
                 ));
           qk:=KernelOfMultiplicativeGeneralMapping(quot);
@@ -436,7 +439,7 @@ local respp,cf,m,mpos,coh,fgens,comp,reps,v,new,isok,pema,pf,gens,nt,quot,
 
           if isok=false then
             Print("quickdecide\n");
-          else 
+          else
             k:=1;
             while isok<>false and k<=Length(nt) do
               qk:=oldqk[k];
@@ -511,6 +514,7 @@ local globalres,resp,d,i,j,nt,p,e,q,cf,m,coh,v,new,quot,nts,pf,pl,comp,reps,
 
   #resp:=[];
   q:=SizesPerfectGroups();
+  q:=Union(q,List(PERFECTLIST,x->Size(x[1])));
   d:=Filtered(DivisorsInt(n),x->x<n and x in q);
 
   if from<>fail then d:=Intersection(d,from[1]);fi;
@@ -548,7 +552,7 @@ local globalres,resp,d,i,j,nt,p,e,q,cf,m,coh,v,new,quot,nts,pf,pl,comp,reps,
         Append(globalres,DoPerfectConstructionFor(q,j,nts,ids));
         Print("Total now: ",Length(globalres)," groups\n");
         # kill factor group and associated info, as not needed any longer
-        Unbind(pl[j]); 
+        Unbind(pl[j]);
 
       od; # for j in ran
     elif nts<=i then
@@ -585,7 +589,7 @@ local sz,l,p,q,s,bound;
   sz:=Intersection(SizesPerfectGroups(),[2..QuoInt(upto,2)]);
   l:=[];
   p:=1;
-  repeat 
+  repeat
     p:=NextPrimeInt(p);
 Print(p,"\n");
     q:=p;
@@ -593,7 +597,7 @@ Print(p,"\n");
       s:=1;
       bound:=QuoInt(upto,q);
       while s<=Length(sz) and sz[s]<=bound do
-        if q<>p 
+        if q<>p
           #1-dim module only if divides -- otherwise split and trivial
           # action -- direct factor
           or sz[s] mod q=0 then
@@ -760,7 +764,7 @@ local i,j,a,p,s,w,idx,sz,g,sim,sg,newf,newrels,new,per,o,rk,smallgenfp,gs,num,
         # force that coset enum finishes
         tbl:=TCENUM.CosetTableFromGensAndRels(
           FreeGeneratorsOfFpGroup(new),RelatorsOfFpGroup(new),j);
-        if not (IsList(tbl) and Length(tbl[1])=Length(o[jp])) then 
+        if not (IsList(tbl) and Length(tbl[1])=Length(o[jp])) then
           Error("cosetenum!");
         fi;
       fi;
